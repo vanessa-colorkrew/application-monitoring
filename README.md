@@ -16,9 +16,15 @@ kind create cluster # Use --name to specify a name; defaults to `kind`
 ```
 
 ### 2. Build the docker images for the demo webserver
+Build the docker image for the webserver:
+```
+cd webserver
+docker build --tag webserver .
+```
+
 After the image has been built, load the image into your local k8s cluster:
 ```bash
-kind load docker-image my-custom-image-0 my-custom-image-1
+kind load docker-image webserver
 ```
 
 ### 3. Configure OTLP endpoint
