@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webserver
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: webserver
+    app.kubernetes.io/part-of: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webserver-svc
+  template:
+    metadata:
+      labels:
+        app: webserver-svc
+    spec:
+      serviceAccountName: beyla
+      shareProcessNamespace: true
+      terminationGracePeriodSeconds: 0
+      containers:
+      - image: webserver
+        name: webserver-svc
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 1234
+        resources:
+          requests:
+            cpu: 100m
+      # # Sidecar container with Beyla - the eBPF auto-instrumentation tool
+      - name: beyla
+        image: grafana/beyla:latest
+        imagePullPolicy: IfNotPresent
+        securityContext: # Privileges are required to install the eBPF probes
+          privileged: true
+        env:
+          # The internal port of the goblog application container
+          - name: BEYLA_OPEN_PORT
+            value: "1234"
+          - name: OTEL_EXPORTER_OTLP_PROTOCOL
+            value: "http/protobuf"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "" # Grafana Cloud OTLP endpoint 
+          - name: OTEL_EXPORTER_OTLP_HEADERS
+            value: "" # Grafana Cloud OTLP Auth headers
+            # required if you want kubernetes metadata decoration
+          - name: BEYLA_KUBE_METADATA_ENABLE
+            value: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webserver-svc
+  namespace: demo
+spec:
+  selector:
+    app: webserver-svc
+  ports:
+  - name: http
+    port: 1234
+    targetPort: 1234
